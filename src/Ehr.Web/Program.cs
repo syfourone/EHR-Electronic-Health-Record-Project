@@ -91,7 +91,10 @@ else
     // which keeps working while the on-prem app is down (CloudAudit).
     var queueDirectory = builder.Configuration["Ehr:CloudAudit:Directory"]
         ?? throw new InvalidOperationException("Set Ehr:CloudAudit:Directory to where the cloud app keeps its audit events.");
-    builder.Services.AddSingleton(new CloudAuditQueue(queueDirectory));
+    // Made by the container, not handed to it, so the container disposes it at shutdown and its file is closed: one
+    // handed in is never disposed, and Windows can't delete a file that is still open. The shipper, a hosted
+    // service, still makes it at startup.
+    builder.Services.AddSingleton(_ => new CloudAuditQueue(queueDirectory));
     builder.Services.AddSingleton<IAuditQueue>(services => services.GetRequiredService<CloudAuditQueue>());
     builder.Services.AddSingleton(CloudAuditKey.FromConfiguration(builder.Configuration));
     builder.Services.AddSingleton<CloudAuditShipper>();
